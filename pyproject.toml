@@ -1,0 +1,15 @@
+[project]
+name = "youtube-short-generator"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "moviepy>=2.2.1",
+    "openai-whisper>=20250625",
+    "qwen-tts>=0.1.1",
+    "rich>=15.0.0",
+    "soundfile>=0.13.1",
+    "torch>=2.11.0",
+    "yt-dlp>=2026.3.17",
+]

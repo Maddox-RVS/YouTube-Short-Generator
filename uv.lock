@@ -1957,6 +1957,7 @@ dependencies = [
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
+    { name = "typer" },
     { name = "yt-dlp" },
 ]
 
@@ -1970,6 +1971,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.7.1" },
     { name = "torchaudio", specifier = ">=2.7.1" },
     { name = "torchvision", specifier = ">=0.22.1" },
+    { name = "typer", specifier = ">=0.25.1" },
     { name = "yt-dlp", specifier = ">=2026.3.17" },
 ]
 

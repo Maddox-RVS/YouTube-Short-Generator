@@ -29,7 +29,7 @@ def download_youtube_video(link: str, output_dir: Path, audio_only: bool = False
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             rich.print(f'[bold green]Downloading:[/bold green] {url}...')
             ydl.download([url])
-            rich.print(f'[bold green]Success:[/bold green] Content saved to {output_dir}\n')
+            rich.print(f'[bold green]Success:[/bold green] [green]Content saved to[/green] [default dim]"{output_dir}"[/default dim]')
             
     except Exception as e:
         rich.print(f'[bold red]Error:[/bold red] yt-dlp failed: {e}')

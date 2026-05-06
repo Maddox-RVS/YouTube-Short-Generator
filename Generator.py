@@ -11,6 +11,7 @@ from rich.text import Text
 from PIL import ImageFont
 from pathlib import Path
 import tempfile
+import torch
 import time
 
 class ShortGenerator:
@@ -26,6 +27,20 @@ class ShortGenerator:
         self.output_file: Path = output_file
         self.tts_generator: Optional[TextToSpeechGenerator] = None
         self.console = Console()
+        self.video_codec: str = 'libx264'
+
+    def _get_video_codec(self) -> str:
+        video_encoding_method: str = 'libx264'
+        video_encoding_message: str = ''
+        with self.console.status('[bold blue]Detecting available video encoding method...', spinner='dots12', spinner_style='bold blue'):
+            if torch.cuda.is_available():
+                video_encoding_message = '[green]=> Using GPU hardware encoding (h264_nvenc)[/green]'
+                video_encoding_method = 'h264_nvenc'
+            else:
+                video_encoding_message = '[green]=> Using CPU software encoding (libx264)[/green]'
+                video_encoding_method = 'libx264'
+        self.console.print(f'{video_encoding_message}')
+        return video_encoding_method
 
     def _convert_to_mp4(self, input_file: Path) -> Path:
         if input_file.suffix.lower() == '.mp4':
@@ -33,7 +48,7 @@ class ShortGenerator:
 
         temp_output: Path = Path(self.tempdir.name) / f'{input_file.stem}_converted.mp4'
         with VideoFileClip(str(input_file)) as video:
-            video.write_videofile(str(temp_output), codec='libx264', audio_codec='aac', logger=None)
+            video.write_videofile(str(temp_output), codec=self.video_codec, audio_codec='aac', logger=None)
         return temp_output
 
     def _convert_to_mp3(self, input_file: Path) -> Path:
@@ -192,16 +207,37 @@ class ShortGenerator:
             # ----------------------------------------------------------------------------------------------------------------
 
             with self.console.status('[bold blue]Exporting video...', spinner='dots12', spinner_style='bold blue'):
-                final_clip.write_videofile(str(output_file), codec='libx264', audio_codec='aac', logger=None)
+                final_clip.write_videofile(str(output_file), codec=self.video_codec, audio_codec='aac', logger=None)
             self.console.print(f'[green]=> Video exported successfully![/green]')
             audio.close()
             tts_audio.close()
+
+    def _get_device(self) -> str:
+        device: str = 'cpu'
+        device_selection_message: str = ''
+        with self.console.status('[bold blue]Detecting available device...', spinner='dots12', spinner_style='bold blue'):
+            if torch.cuda.is_available():
+                device_count = torch.cuda.device_count()
+                device_name = torch.cuda.get_device_name(0)
+                device_selection_message = f'[green]=> CUDA GPU detected:[/green] [default dim]{device_name} ({device_count} GPU{"s" if device_count > 1 else ""})[/default dim]'
+                device = 'cuda'
+            elif torch.backends.mps.is_available():
+                device_selection_message = '[green]=> Apple Silicon (MPS) detected[/green]'
+                device = 'mps'
+            else:
+                device_selection_message = '[green]=> No GPU detected, using CPU[/green]'
+                device = 'cpu'
+        self.console.print(f'{device_selection_message}')
+        return device
 
     def generate_short(self, audio_volume=1.0, keep_video_audio=False, tone='Regular Guy', font_path=Path('Dosis-Bold.ttf'), subtitle_color='#FF0000'):
         self.console.print(f'[bold green]------------------------[/bold green]')
         self.console.print(f'[bold green]YouTube Short Generator[/bold green]')
         self.console.print(f'[bold green]------------------------[/bold green]')
         self.console.print('[bold green]Processing video...[/bold green]')
+
+        # Detect best available video codec based on hardware capabilities (h264_nvenc for GPU, libx264 for CPU)
+        self.video_codec = self._get_video_codec()
 
         # Convert/encode input video as mp4
         with self.console.status('[bold blue]Ensuring video is proper format...', spinner='dots12', spinner_style='bold blue'):
@@ -217,9 +253,10 @@ class ShortGenerator:
         text_overlay: str = self._open_text_overlay()
 
         # Generate TTS audio based on the text overlay and specified tone, then save to temporary directory
+        device: str = self._get_device()
         self.console.print(f'[bold blue]Initializing Text-to-Speech generator...', end='\r')
-        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(tone)
-        if self.tts_generator.tone != tone: self.tts_generator = TextToSpeechGenerator(tone)
+        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device, tone)
+        if self.tts_generator.tone != tone: self.tts_generator = TextToSpeechGenerator(device, tone)
         self.console.print(f'[green]=> Text-to-Speech generator initialized with tone:[/green] [default dim]"{tone}"[/default dim]')
         tts_audio_file: Path = Path(self.tempdir.name) / 'tts_audio.wav'
         self.tts_generator.generate_text_to_speech_audio(text_overlay, tts_audio_file)
@@ -239,7 +276,7 @@ class ShortGenerator:
             keep_video_audio=keep_video_audio,
             subtitle_color=subtitle_color)
 
-        self.console.print(f'[bold green]Finished processing video. Output saved to:[/bold green] [default dim]{self.output_file}[/default dim]')
+        self.console.print(f'[bold green]Finished processing video. Output saved to:[/bold green] [default dim]"{self.output_file}"[/default dim]')
         self.console.print(f'[bold green]------------------------[/bold green]')
 
     def __del__(self):

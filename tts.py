@@ -8,8 +8,10 @@ import sys
 import os
 
 class TextToSpeechGenerator:
-    def __init__(self, tone: str):
-        self.tone = tone
+    def __init__(self, device: str, tone: str):
+        self.device: str = device
+        self.tone: str = tone
+        self.console: Console = Console()
 
         # --------------------------------------------------------------
         # Suppress stdout and stderr from the TTS library during import
@@ -25,10 +27,9 @@ class TextToSpeechGenerator:
         from qwen_tts import Qwen3TTSModel
         self.model = Qwen3TTSModel.from_pretrained(
             'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
-            device_map='cpu',
-            dtype=torch.float32,
+            device_map=self.device,
+            dtype=torch.float16 if self.device != 'cpu' else torch.float32,
             attn_implementation='sdpa',)
-        self.console = Console()
         
         os.dup2(old_stdout_fd, 1)
         os.dup2(old_stderr_fd, 2)
@@ -38,7 +39,7 @@ class TextToSpeechGenerator:
         sys.stdout, sys.stderr = old_stdout, old_stderr
         # --------------------------------------------------------------
 
-        self.whisper_model = whisper.load_model("base")
+        self.whisper_model = whisper.load_model('base', device=self.device)
 
     def generate_text_to_speech_audio(self, text: str, output_file: Path):
         if not output_file.parent.exists():
@@ -55,19 +56,19 @@ class TextToSpeechGenerator:
                 language='English',
                 instruct=self.tone,)
             sf.write(output_file, wavs[0], sr)
-        self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]{output_file}[/default dim]')
+        self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
 
     def generate_timestamped_subtitles(self, input_speach_file: Path) -> list[dict]:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            warnings.simplefilter('ignore')
             with self.console.status('[bold blue]Generating timestamped subtitles...', spinner='dots12', spinner_style='bold blue'):
                 result: dict = self.whisper_model.transcribe(str(input_speach_file), word_timestamps=True)
                 words: list[dict] = []
-                for segment in result["segments"]:
-                    for word in segment["words"]:
+                for segment in result['segments']:
+                    for word in segment['words']:
                         words.append({
-                            "word": word["word"].strip(),
-                            "start": float(word["start"]),
-                            "end": float(word["end"])})
+                            'word': word['word'].strip(),
+                            'start': float(word['start']),
+                            'end': float(word['end'])})
             self.console.print(f'[green]=> Timestamped subtitles generated successfully![/green]')
             return words

@@ -1,5 +1,4 @@
 from youtube_downloader import download_youtube_video
-from Generator import ShortGenerator
 from pathlib import Path
 import argparse
 import rich
@@ -41,6 +40,8 @@ def main():
     elif args.command == 'download': handle_download(args)
 
 def handle_create(args: argparse.Namespace):
+    from Generator import ShortGenerator
+    
     video_file: Path = Path(args.video)
     audio_file: Path = Path(args.audio)
     text_overlay_file: Path = Path(args.text)

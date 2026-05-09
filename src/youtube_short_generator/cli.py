@@ -5,12 +5,8 @@ Provides CLI commands to create YouTube Shorts from videos and download content
 from YouTube with AI-generated voiceover and subtitles.
 '''
 
+from .youtube_downloader import download_youtube_video
 from pathlib import Path
-import sys
-
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
-
-from youtube_short_generator import download_youtube_video
 import typer
 import rich
 import re

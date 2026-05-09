@@ -3,8 +3,8 @@ name = "youtube-short-generator"
 version = "1.0.0"
 description = "Generate YouTube Shorts with AI narration, subtitles, and background music"
 readme = "README.md"
-requires-python = ">=3.13"
-license = { file = "LICENSE" }
+requires-python = ">=3.13, <3.14"
+license = { text = "AGPL-3.0-only WITH additional attribution requirement" }
 authors = [
     { name = "MaddoxRVS" }
 ]
@@ -18,6 +18,7 @@ keywords = [
     "whisper"
 ]
 classifiers = [
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
@@ -27,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "moviepy>=2.2.1",
+    "numpy<2.0",
     "openai-whisper>=20250625",
     "qwen-tts>=0.1.1",
     "rich>=15.0.0",
@@ -51,8 +53,26 @@ youtube-short-generator = "youtube_short_generator.cli:app"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/youtube_short_generator"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
 [[tool.uv.index]]
 url = "https://download.pytorch.org/whl/cu118"
+name = "pytorch-cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
 
 [tool.uv]
 package = true

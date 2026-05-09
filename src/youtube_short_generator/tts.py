@@ -9,8 +9,6 @@ from rich.console import Console
 from pathlib import Path
 import soundfile as sf
 import warnings
-import whisper
-import torch
 import sys
 import os
 
@@ -29,6 +27,8 @@ class TextToSpeechGenerator:
         Args:
             device: Device to use ('cuda', 'mps', or 'cpu')
         '''
+        import whisper
+        import torch
 
         self.device: str = device
         self.console: Console = Console()
@@ -100,7 +100,7 @@ class TextToSpeechGenerator:
             - start: Start time in seconds (float)
             - end: End time in seconds (float)
         '''
-        
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             with self.console.status('[bold blue]Generating timestamped subtitles...', spinner='dots12', spinner_style='bold blue'):

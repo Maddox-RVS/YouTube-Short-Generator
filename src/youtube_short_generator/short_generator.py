@@ -6,19 +6,13 @@ with AI-generated narration (TTS), timestamped subtitles, and background music.
 It includes GPU acceleration support for video encoding when CUDA is available.
 '''
 
-import subprocess
-
-from moviepy import CompositeAudioClip, CompositeVideoClip, TextClip, VideoClip, VideoFileClip, AudioFileClip
 from .tts import TextToSpeechGenerator
 from rich.console import Console
-import moviepy.video.fx as vfx
 from typing import Optional
 from rich.live import Live
 from rich.text import Text
-from PIL import ImageFont
 from pathlib import Path
 import tempfile
-import torch
 import time
 
 class ShortGenerator:
@@ -67,6 +61,7 @@ class ShortGenerator:
         Returns:
             String name of the video codec to use ('h264_nvenc' or 'libx264')
         '''
+        import torch
 
         video_encoding_method: str = 'libx264'
         video_encoding_message: str = ''
@@ -91,6 +86,7 @@ class ShortGenerator:
             Path to the MP4 file (either the input file if already MP4,
             or a newly converted file in the temporary directory)
         '''
+        from moviepy import VideoFileClip
 
         if input_file.suffix.lower() == '.mp4':
             return input_file
@@ -111,6 +107,7 @@ class ShortGenerator:
             Path to the MP3 file (either the input file if already MP3,
             or a newly converted file in the temporary directory)
         '''
+        from moviepy import AudioFileClip
 
         if input_file.suffix.lower() == '.mp3':
             return input_file
@@ -184,6 +181,9 @@ class ShortGenerator:
             audio_volume: Volume level for background audio as fraction (default: 1.0)
             keep_video_audio: Whether to keep original video audio mixed in (default: False)
         '''
+        from moviepy import CompositeAudioClip, CompositeVideoClip, TextClip, VideoClip, VideoFileClip, AudioFileClip
+        import moviepy.video.fx as vfx
+        from PIL import ImageFont
 
         with VideoFileClip(input_video_file) as final_clip:
 
@@ -321,6 +321,7 @@ class ShortGenerator:
         Returns:
             String identifier of the device ('cuda', 'mps', or 'cpu')
         '''
+        import torch
 
         device: str = 'cpu'
         device_selection_message: str = ''
@@ -412,5 +413,5 @@ class ShortGenerator:
         Automatically removes the temporary directory and all intermediate
         files created during video processing.
         '''
-        
+
         self.tempdir.cleanup()  

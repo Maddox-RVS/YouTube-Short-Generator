@@ -178,9 +178,19 @@ The package includes Dosis Bold as the default font, but any TrueType font (.ttf
 
 If you have an NVIDIA GPU, the application automatically detects it and uses hardware-accelerated video encoding (**h264_nvenc**) instead of CPU encoding (**libx264**).
 
-**Performance comparison:**
-- **GPU (h264_nvenc)**: 2-5 minutes for 10-minute video
-- **CPU (libx264)**: 20-40 minutes for 10-minute video
+GPU support is not enabled by default because the CUDA version of PyTorch is not available on PyPI. To enable GPU acceleration, run the following command in your environment after installing:
+
+**pip:**
+```bash
+pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu118
+```
+
+**uv:**
+```bash
+uv add torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu118
+```
+
+The tool will automatically detect and use the GPU if CUDA is available.
 
 ## API Reference
 

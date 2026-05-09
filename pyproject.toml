@@ -1,9 +1,30 @@
 [project]
 name = "youtube-short-generator"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Generate YouTube Shorts with AI narration, subtitles, and background music"
 readme = "README.md"
 requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [
+    { name = "MaddoxRVS" }
+]
+keywords = [
+    "youtube",
+    "shorts",
+    "video",
+    "tts",
+    "subtitles",
+    "moviepy",
+    "whisper"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Video :: Conversion",
+    "Topic :: Multimedia :: Sound/Audio"
+]
 dependencies = [
     "moviepy>=2.2.1",
     "openai-whisper>=20250625",
@@ -17,8 +38,21 @@ dependencies = [
     "yt-dlp>=2026.3.17",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Maddox-RVS/YouTube-Short-Generator"
+Repository = "https://github.com/Maddox-RVS/YouTube-Short-Generator"
+Issues = "https://github.com/Maddox-RVS/YouTube-Short-Generator/issues"
+Author = "https://github.com/Maddox-RVS"
+
 [project.scripts]
 youtube-short-generator = "youtube_short_generator.cli:app"
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [[tool.uv.index]]
 url = "https://download.pytorch.org/whl/cu118"
+
+[tool.uv]
+package = true

@@ -6,6 +6,7 @@ voiceover, subtitles, and background music using GPU acceleration.
 '''
 
 from .short_generator import ShortGenerator
+from .short_generator import TextToSpeechGenerator
 from .youtube_downloader import download_youtube_video
 
-__all__ = ['ShortGenerator', 'download_youtube_video']
+__all__ = ['ShortGenerator', 'TextToSpeechGenerator', 'download_youtube_video']

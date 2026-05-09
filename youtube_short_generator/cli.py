@@ -1,11 +1,13 @@
-from youtube_downloader import download_youtube_video
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+
+from youtube_short_generator import download_youtube_video
 import typer
 import rich
 import re
-import click
 
-# Create app with custom context to support -h
 app = typer.Typer(
     help="YouTube Short Toolbox - Generate YouTube Shorts with AI",
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -33,7 +35,7 @@ def create(
     tone: str = typer.Option('Regular Guy', '--tone', help='Tone for text overlay (e.g., "sarcastic", "excited", "dramatic")'),
     subtitle_color: str = typer.Option('#FF0000', '-c', '--subtitle-color', help='Color for subtitles in hex format (default: #FF0000)'),):
 
-    from Generator import ShortGenerator
+    from youtube_short_generator import ShortGenerator
     
     video_file: Path = Path(video)
     audio_file: Path = Path(audio)
@@ -60,11 +62,17 @@ def create(
         rich.print('[bold red]Error:[/bold red] Invalid subtitle color. Please provide a valid hex color code (e.g., #FF0000).\n')
         raise typer.Exit()
     
+    import importlib.resources
+    try:
+        font_dir: Path = importlib.resources.files('youtube_short_generator').parent / 'youtube_short_generator'
+        font_path: Path = font_dir / 'Dosis-Bold.ttf'
+    except: font_path = Path('Dosis-Bold.ttf')
+    
     generator = ShortGenerator(video_file, audio_file, text_overlay_file, output_file)
     generator.generate_short(audio_volume=volume, 
                              keep_video_audio=keep_video_audio, 
                              tone=tone, 
-                             font_path=Path('Dosis-Bold.ttf'),
+                             font_path=font_path,
                              subtitle_color=subtitle_color)
 
 @app.command(short_help='Download a YouTube video/audio from a URL')

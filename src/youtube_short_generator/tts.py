@@ -8,9 +8,8 @@ import sys
 import os
 
 class TextToSpeechGenerator:
-    def __init__(self, device: str, tone: str):
+    def __init__(self, device: str):
         self.device: str = device
-        self.tone: str = tone
         self.console: Console = Console()
 
         # --------------------------------------------------------------
@@ -41,7 +40,7 @@ class TextToSpeechGenerator:
 
         self.whisper_model = whisper.load_model('base', device=self.device)
 
-    def generate_text_to_speech_audio(self, text: str, output_file: Path):
+    def generate_text_to_speech_audio(self, text: str, tone: str, output_file: Path):
         if not output_file.parent.exists():
             self.console.print(f'[bold red](tts) Error:[/bold red] Output directory "{output_file.parent}" does not exist.\n')
             return
@@ -54,7 +53,7 @@ class TextToSpeechGenerator:
             wavs, sr = self.model.generate_voice_design(
                 text=text,
                 language='English',
-                instruct=self.tone,)
+                instruct=tone,)
             sf.write(output_file, wavs[0], sr)
         self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
 

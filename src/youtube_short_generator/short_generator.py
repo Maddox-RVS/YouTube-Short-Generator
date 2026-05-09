@@ -1,8 +1,7 @@
 import subprocess
 
 from moviepy import CompositeAudioClip, CompositeVideoClip, TextClip, VideoClip, VideoFileClip, AudioFileClip
-from moviepy.video.fx.Margin import Margin
-from tts import TextToSpeechGenerator
+from .tts import TextToSpeechGenerator
 from rich.console import Console
 import moviepy.video.fx as vfx
 from typing import Optional
@@ -19,13 +18,14 @@ class ShortGenerator:
                  video_file: Path, 
                  audio_file: Path, 
                  taxt_overlay_file: Path, 
-                 output_file: Path):
+                 output_file: Path,
+                 tts_generator: Optional[TextToSpeechGenerator] = None):
         self.tempdir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
         self.video_file: Path = video_file
         self.audio_file: Path = audio_file
         self.text_overlay_file: Path = taxt_overlay_file
         self.output_file: Path = output_file
-        self.tts_generator: Optional[TextToSpeechGenerator] = None
+        self.tts_generator: Optional[TextToSpeechGenerator] = tts_generator
         self.console = Console()
         self.video_codec: str = 'libx264'
 
@@ -255,11 +255,10 @@ class ShortGenerator:
         # Generate TTS audio based on the text overlay and specified tone, then save to temporary directory
         device: str = self._get_device()
         self.console.print(f'[bold blue]Initializing Text-to-Speech generator...', end='\r')
-        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device, tone)
-        if self.tts_generator.tone != tone: self.tts_generator = TextToSpeechGenerator(device, tone)
+        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device)
         self.console.print(f'[green]=> Text-to-Speech generator initialized with tone:[/green] [default dim]"{tone}"[/default dim]')
         tts_audio_file: Path = Path(self.tempdir.name) / 'tts_audio.wav'
-        self.tts_generator.generate_text_to_speech_audio(text_overlay, tts_audio_file)
+        self.tts_generator.generate_text_to_speech_audio(text_overlay, tone, tts_audio_file)
 
         # Transcribe the generated TTS audio to get timestamped subtitles
         subtitles: list[dict] = self.tts_generator.generate_timestamped_subtitles(tts_audio_file)

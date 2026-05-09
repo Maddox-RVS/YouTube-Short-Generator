@@ -17,5 +17,8 @@ dependencies = [
     "yt-dlp>=2026.3.17",
 ]
 
+[project.scripts]
+youtube-short-generator = "youtube_short_generator.cli:app"
+
 [[tool.uv.index]]
 url = "https://download.pytorch.org/whl/cu118"

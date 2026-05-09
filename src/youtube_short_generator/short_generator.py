@@ -1,3 +1,11 @@
+'''
+Video processing engine for creating YouTube Shorts from longer videos.
+
+This module handles converting standard videos into 9:16 aspect ratio shorts
+with AI-generated narration (TTS), timestamped subtitles, and background music.
+It includes GPU acceleration support for video encoding when CUDA is available.
+'''
+
 import subprocess
 
 from moviepy import CompositeAudioClip, CompositeVideoClip, TextClip, VideoClip, VideoFileClip, AudioFileClip
@@ -14,12 +22,32 @@ import torch
 import time
 
 class ShortGenerator:
+    '''
+    Convert videos into YouTube Shorts with AI narration and subtitles.
+    
+    This class handles the complete pipeline of transforming a standard video
+    into a 9:16 aspect ratio short-form video with TTS audio, background music,
+    and animated word-level subtitles.
+    '''
+
     def __init__(self, 
                  video_file: Path, 
                  audio_file: Path, 
                  taxt_overlay_file: Path, 
                  output_file: Path,
                  tts_generator: Optional[TextToSpeechGenerator] = None):
+        '''
+        Initialize the ShortGenerator with input and output paths.
+        
+        Args:
+            video_file: Path to the source video file
+            audio_file: Path to the background music/audio file
+            taxt_overlay_file: Path to the text file containing narration script
+            output_file: Path where the generated short video will be saved
+            tts_generator: Optional pre-initialized TextToSpeechGenerator instance.
+                          If None, a new instance will be created during generate_short()
+        '''
+
         self.tempdir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
         self.video_file: Path = video_file
         self.audio_file: Path = audio_file
@@ -30,6 +58,16 @@ class ShortGenerator:
         self.video_codec: str = 'libx264'
 
     def _get_video_codec(self) -> str:
+        '''
+        Detect and select the best available video codec for encoding.
+        
+        Returns the GPU hardware codec (h264_nvenc) if CUDA is available,
+        otherwise falls back to CPU software codec (libx264).
+        
+        Returns:
+            String name of the video codec to use ('h264_nvenc' or 'libx264')
+        '''
+
         video_encoding_method: str = 'libx264'
         video_encoding_message: str = ''
         with self.console.status('[bold blue]Detecting available video encoding method...', spinner='dots12', spinner_style='bold blue'):
@@ -43,6 +81,17 @@ class ShortGenerator:
         return video_encoding_method
 
     def _convert_to_mp4(self, input_file: Path) -> Path:
+        '''
+        Convert a video file to MP4 format if necessary.
+        
+        Args:
+            input_file: Path to the input video file
+            
+        Returns:
+            Path to the MP4 file (either the input file if already MP4,
+            or a newly converted file in the temporary directory)
+        '''
+
         if input_file.suffix.lower() == '.mp4':
             return input_file
 
@@ -52,6 +101,17 @@ class ShortGenerator:
         return temp_output
 
     def _convert_to_mp3(self, input_file: Path) -> Path:
+        '''
+        Convert an audio file to MP3 format if necessary.
+        
+        Args:
+            input_file: Path to the input audio file
+            
+        Returns:
+            Path to the MP3 file (either the input file if already MP3,
+            or a newly converted file in the temporary directory)
+        '''
+
         if input_file.suffix.lower() == '.mp3':
             return input_file
 
@@ -61,6 +121,20 @@ class ShortGenerator:
         return temp_output
 
     def _open_text_overlay(self, lines_shown=5, delay=0.05) -> str:
+        '''
+        Read and display the text overlay file with animated scrolling.
+        
+        Shows a live animation of the text file being read line by line,
+        creating a visual preview for the user.
+        
+        Args:
+            lines_shown: Number of lines to show in the scrolling window (default: 5)
+            delay: Delay in seconds between showing each line (default: 0.05)
+            
+        Returns:
+            The complete text content from the overlay file as a single string
+        '''
+
         with open(self.text_overlay_file, 'r') as f:
             lines = f.readlines()
 
@@ -88,6 +162,29 @@ class ShortGenerator:
                                 subtitle_color: str,
                                 audio_volume=1.0,
                                 keep_video_audio=False):
+        '''
+        Combine video, audio, TTS, and subtitles into a final short-form video.
+        
+        This is the core video processing method that:
+        - Crops video to 9:16 aspect ratio
+        - Removes/keeps original audio based on parameters
+        - Mixes background music with TTS narration
+        - Applies animated word-level subtitles
+        - Fits/cuts video duration to match TTS audio duration
+        - Exports final video with specified codec
+        
+        Args:
+            input_video_file: Path to the source video
+            input_audio_file: Path to the background music/audio
+            input_tts_audio_file: Path to the generated TTS audio
+            subtitles: List of dicts with word-level timing data (word, start, end)
+            output_file: Path where the final short video will be saved
+            font_path: Path to the font file for subtitle text rendering
+            subtitle_color: Hex color code for subtitle text (e.g., '#FF0000')
+            audio_volume: Volume level for background audio as fraction (default: 1.0)
+            keep_video_audio: Whether to keep original video audio mixed in (default: False)
+        '''
+
         with VideoFileClip(input_video_file) as final_clip:
 
             # ----------------------------------------------------------------------------------------------
@@ -213,6 +310,18 @@ class ShortGenerator:
             tts_audio.close()
 
     def _get_device(self) -> str:
+        '''
+        Detect available compute device for AI model execution.
+        
+        Checks for available hardware in priority order:
+        1. CUDA GPUs (NVIDIA)
+        2. MPS (Apple Silicon)
+        3. CPU (fallback)
+        
+        Returns:
+            String identifier of the device ('cuda', 'mps', or 'cpu')
+        '''
+
         device: str = 'cpu'
         device_selection_message: str = ''
         with self.console.status('[bold blue]Detecting available device...', spinner='dots12', spinner_style='bold blue'):
@@ -231,6 +340,24 @@ class ShortGenerator:
         return device
 
     def generate_short(self, audio_volume=1.0, keep_video_audio=False, tone='Regular Guy', font_path=Path('Dosis-Bold.ttf'), subtitle_color='#FF0000'):
+        '''
+        Generate a complete YouTube Short from input video, audio, and text.
+        
+        This is the main public method that orchestrates the entire pipeline:
+        - Detects video codec based on available hardware
+        - Validates and converts input formats
+        - Initializes TTS generator
+        - Generates audio and extracts subtitle timing
+        - Combines all elements into final short-form video
+        
+        Args:
+            audio_volume: Volume level for background music as fraction, 0.0-1.0+ (default: 1.0)
+            keep_video_audio: Whether to keep original video audio in mix (default: False)
+            tone: Emotional tone for TTS narration, e.g., 'excited', 'sarcastic', 'Regular Guy' (default: 'Regular Guy')
+            font_path: Path to font file for subtitle text rendering (default: 'Dosis-Bold.ttf')
+            subtitle_color: Hex color code for subtitle text, e.g., '#FF0000' for red (default: '#FF0000')
+        '''
+
         self.console.print(f'[bold green]------------------------[/bold green]')
         self.console.print(f'[bold green]YouTube Short Generator[/bold green]')
         self.console.print(f'[bold green]------------------------[/bold green]')
@@ -279,4 +406,11 @@ class ShortGenerator:
         self.console.print(f'[bold green]------------------------[/bold green]')
 
     def __del__(self):
+        '''
+        Cleanup temporary files when ShortGenerator instance is destroyed.
+        
+        Automatically removes the temporary directory and all intermediate
+        files created during video processing.
+        '''
+        
         self.tempdir.cleanup()  

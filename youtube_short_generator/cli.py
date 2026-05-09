@@ -1,3 +1,10 @@
+'''
+Command-line interface for YouTube Short Generator.
+
+Provides CLI commands to create YouTube Shorts from videos and download content
+from YouTube with AI-generated voiceover and subtitles.
+'''
+
 from pathlib import Path
 import sys
 
@@ -14,13 +21,31 @@ app = typer.Typer(
     add_completion=False)
 
 def is_valid_hex_color(value: str) -> bool:
+    '''
+    Validate if a string is a valid hexadecimal color code.
+    
+    Args:
+        value: Color string to validate (e.g., "#FF0000" or "#FFF")
+        
+    Returns:
+        True if valid hex color, False otherwise
+    '''
+
     return bool(re.match(r'^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$', value))
 
 def validate_video_format(video_file: Path) -> bool:
+    '''
+    Check if video file has a supported format.
+    '''
+
     valid_formats = ['.mp4', '.mov', '.avi', '.mkv']
     return video_file.suffix.lower() in valid_formats
 
 def validate_music_format(music_file: Path) -> bool:
+    '''
+    Check if audio file has a supported format.
+    '''
+    
     valid_formats = ['.mp3', '.wav', '.aac', '.flac']
     return music_file.suffix.lower() in valid_formats
 
@@ -34,6 +59,12 @@ def create(
     keep_video_audio: bool = typer.Option(False, '--keep-video-audio', help='Keep original audio from the video'),
     tone: str = typer.Option('Regular Guy', '--tone', help='Tone for text overlay (e.g., "sarcastic", "excited", "dramatic")'),
     subtitle_color: str = typer.Option('#FF0000', '-c', '--subtitle-color', help='Color for subtitles in hex format (default: #FF0000)'),):
+    '''
+    Generate a YouTube Short by combining video, background music, and text-to-speech voiceover.
+    
+    Processes input video into 9:16 aspect ratio, generates AI voiceover from text,
+    adds timestamped subtitles, and mixes with background music.
+    '''
 
     from youtube_short_generator import ShortGenerator
     
@@ -80,6 +111,14 @@ def download(
     link: str = typer.Option(..., '-l', '--link', help='The URL to download'),
     output: str = typer.Option('.', '-o', '--output', help='Directory to save the downloaded video'),
     audio_only: bool = typer.Option(False, '-a', '--audio-only', help='Download audio only'),):
+    '''
+    Download a video or audio from YouTube.
+    
+    Args:
+        link: YouTube URL to download
+        output: Directory to save the downloaded file
+        audio_only: If True, download audio only (MP3)
+    '''
     
     output_dir: Path = Path(output)
 

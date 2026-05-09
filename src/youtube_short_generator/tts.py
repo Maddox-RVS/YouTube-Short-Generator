@@ -1,3 +1,10 @@
+'''
+Text-to-speech and speech-to-text functionality using AI models.
+
+Provides TextToSpeechGenerator class for generating speech from text using Qwen3 TTS
+and generating timestamped subtitles using OpenAI Whisper.
+'''
+
 from rich.console import Console
 from pathlib import Path
 import soundfile as sf
@@ -8,7 +15,21 @@ import sys
 import os
 
 class TextToSpeechGenerator:
+    '''
+    Generate speech audio from text and generate subtitles from audio.
+    
+    Uses Qwen3 for text-to-speech synthesis and OpenAI Whisper for speech-to-text
+    with word-level timestamps. Supports GPU acceleration via CUDA.
+    '''
+    
     def __init__(self, device: str):
+        '''
+        Initialize the TextToSpeechGenerator with specified device.
+        
+        Args:
+            device: Device to use ('cuda', 'mps', or 'cpu')
+        '''
+
         self.device: str = device
         self.console: Console = Console()
 
@@ -41,6 +62,15 @@ class TextToSpeechGenerator:
         self.whisper_model = whisper.load_model('base', device=self.device)
 
     def generate_text_to_speech_audio(self, text: str, tone: str, output_file: Path):
+        '''
+        Generate speech audio from text using Qwen3 TTS.
+        
+        Args:
+            text: Text content to convert to speech
+            tone: Emotional tone/style (e.g., "excited", "sarcastic", "dramatic")
+            output_file: Path to save the generated WAV file
+        '''
+
         if not output_file.parent.exists():
             self.console.print(f'[bold red](tts) Error:[/bold red] Output directory "{output_file.parent}" does not exist.\n')
             return
@@ -58,6 +88,19 @@ class TextToSpeechGenerator:
         self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
 
     def generate_timestamped_subtitles(self, input_speach_file: Path) -> list[dict]:
+        '''
+        Extract timestamped subtitles from speech audio using Whisper.
+        
+        Args:
+            input_speach_file: Path to the audio file to transcribe
+            
+        Returns:
+            List of dictionaries containing word-level timestamps with keys:
+            - word: The transcribed word
+            - start: Start time in seconds (float)
+            - end: End time in seconds (float)
+        '''
+        
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             with self.console.status('[bold blue]Generating timestamped subtitles...', spinner='dots12', spinner_style='bold blue'):

@@ -1,8 +1,17 @@
 # YouTube Short Generator
 
 ![Python](https://img.shields.io/badge/python-3.13+-blue.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0%20%2B%20additional%20terms-blue.svg)
+![PyPI](https://img.shields.io/pypi/v/youtube-short-generator.svg)
+![Downloads](https://img.shields.io/pypi/dm/youtube-short-generator.svg)
+![Platform](https://img.shields.io/badge/platform-windows%20%7C%20macOS%20%7C%20linux-blue)
+![GPU](https://img.shields.io/badge/GPU-NVIDIA%20CUDA%20optional-76B900?logo=nvidia&logoColor=white)
 
 Transform videos into engaging YouTube Shorts (9:16 aspect ratio) with **AI-generated narration**, **word-level animated subtitles**, and **background music mixing**. Features GPU acceleration for lightning-fast video processing.
+
+## Attribution
+
+This project is created by MaddoxRVS. GitHub: https://github.com/Maddox-RVS
 
 ## Features
 

@@ -46,7 +46,7 @@ pip install youtube-short-generator
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/yourusername/YouTube-Short-Generator.git
+git clone https://github.com/Maddox-RVS/YouTube-Short-Generator.git
 cd YouTube-Short-Generator
 pip install -e .
 ```
@@ -182,16 +182,6 @@ If you have an NVIDIA GPU, the application automatically detects it and uses har
 - **GPU (h264_nvenc)**: 2-5 minutes for 10-minute video
 - **CPU (libx264)**: 20-40 minutes for 10-minute video
 
-**Enable GPU support:**
-
-```bash
-# Install PyTorch with CUDA support (automatically done via pip)
-pip install torch torchvision torchaudio
-
-# Verify GPU is detected
-python -c "import torch; print(torch.cuda.is_available())"
-```
-
 ## API Reference
 
 ### ShortGenerator
@@ -216,7 +206,11 @@ ShortGenerator(
 Handles AI narration and subtitle extraction.
 
 ```python
-TextToSpeechGenerator(device: str = 'cuda')
+import torch
+from youtube_short_generator import TextToSpeechGenerator
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+TextToSpeechGenerator(device=device)
 ```
 
 **Methods:**

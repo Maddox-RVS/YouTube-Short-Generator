@@ -185,9 +185,23 @@ GPU support is not enabled by default because the CUDA version of PyTorch is not
 pip install torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu118
 ```
 
-**uv:**
+**uv:**     
+Add the following to your `pyproject.toml`:
 ```bash
-uv add torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu118
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu118"
+name = "pytorch-cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+```
+Then run:
+```bash
+uv add torch torchaudio torchvision
+uv sync
 ```
 
 The tool will automatically detect and use the GPU if CUDA is available.

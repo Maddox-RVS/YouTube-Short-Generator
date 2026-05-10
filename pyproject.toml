@@ -1,9 +1,9 @@
 [project]
 name = "youtube-short-generator"
-version = "1.0.0"
+version = "1.0.2"
 description = "Generate YouTube Shorts with AI narration, subtitles, and background music"
 readme = "README.md"
-requires-python = ">=3.13, <3.14"
+requires-python = ">=3.13"
 license = { text = "AGPL-3.0-only WITH additional attribution requirement" }
 authors = [
     { name = "MaddoxRVS" }

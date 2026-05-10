@@ -287,12 +287,3 @@ NVIDIA A100-PCIE-40GB
 
 ### Slow video processing
 GPU acceleration requires CUDA. If you're on CPU-only, processing will be slower. GPU is optional but strongly recommended.
-
-## Changelog
-
-### v1.0.0
-- Initial release
-- GPU acceleration support
-- AI narration with multiple tones
-- Animated subtitles
-- YouTube integration

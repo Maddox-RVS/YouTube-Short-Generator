@@ -51,10 +51,10 @@ def create(
     audio: str = typer.Option(..., '-a', '--audio', help='Path to background music'),
     text: str = typer.Option(..., '-t', '--text', help='Path to text overlay file (plain text)'),
     output: str = typer.Option(..., '-o', '--output', help='Path to save output'),
-    volume: float = typer.Option(1.0, '--volume', help='Volume level for background music (default: 1.0)'),
+    volume: float = typer.Option(1.0, '--volume', help='Volume level for background music'),
     keep_video_audio: bool = typer.Option(False, '--keep-video-audio', help='Keep original audio from the video'),
-    tone: str = typer.Option('Regular Guy', '--tone', help='Tone for text overlay (e.g., "sarcastic", "excited", "dramatic")'),
-    subtitle_color: str = typer.Option('#FF0000', '-c', '--subtitle-color', help='Color for subtitles in hex format (default: #FF0000)'),):
+    tone: str = typer.Option('Excited', '--tone', help='Tone for text overlay (e.g., "sarcastic", "excited", "dramatic")'),
+    subtitle_color: str = typer.Option('#FF0000', '-c', '--subtitle-color', help='Color for subtitles in hex format'),):
     '''
     Generate a YouTube Short by combining video, background music, and text-to-speech voiceover.
     

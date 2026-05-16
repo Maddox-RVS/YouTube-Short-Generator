@@ -20,18 +20,22 @@ class TextToSpeechGenerator:
     with word-level timestamps. Supports GPU acceleration via CUDA.
     '''
     
-    def __init__(self, device: str):
+    def __init__(self, device: str, console: Console = None):
         '''
         Initialize the TextToSpeechGenerator with specified device.
         
         Args:
             device: Device to use ('cuda', 'mps', or 'cpu')
+            console: Optional Rich Console instance for logging. If None, a new Console will be created.
         '''
         import whisper
         import torch
 
         self.device: str = device
-        self.console: Console = Console()
+
+        self.console: Console = console
+        if self.console is None:
+            self.console = Console()
 
         # --------------------------------------------------------------
         # Suppress stdout and stderr from the TTS library during import

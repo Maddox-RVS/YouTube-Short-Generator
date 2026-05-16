@@ -29,7 +29,8 @@ class ShortGenerator:
                  audio_file: Path, 
                  text_overlay_file: Path, 
                  output_file: Path,
-                 tts_generator: Optional[TextToSpeechGenerator] = None):
+                 tts_generator: Optional[TextToSpeechGenerator] = None,
+                 console: Console = None):
         '''
         Initialize the ShortGenerator with input and output paths.
         
@@ -40,6 +41,7 @@ class ShortGenerator:
             output_file: Path where the generated short video will be saved
             tts_generator: Optional pre-initialized TextToSpeechGenerator instance.
                           If None, a new instance will be created during generate_short()
+            console: Optional Rich Console instance for logging. If None, a new Console will be created.
         '''
 
         self._tempdir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
@@ -48,7 +50,9 @@ class ShortGenerator:
         self.text_overlay_file: Path = text_overlay_file
         self.output_file: Path = output_file
         self.tts_generator: Optional[TextToSpeechGenerator] = tts_generator
-        self._console = Console()
+        self._console = console
+        if self._console is None:
+            self._console = Console()
         self.video_codec: str = 'libx264'
 
     def _get_video_codec(self) -> str:
@@ -390,7 +394,7 @@ class ShortGenerator:
         # Generate TTS audio based on the text overlay and specified tone, then save to temporary directory
         device: str = self._get_device()
         self._console.print(f'[bold blue]Initializing Text-to-Speech generator...', end='\r')
-        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device)
+        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device, self._console)
         self._console.print(f'[green]=> Text-to-Speech generator initialized with tone:[/green] [default dim]"{tone}"[/default dim]')
         tts_audio_file: Path = Path(self._tempdir.name) / 'tts_audio.wav'
         self.tts_generator.generate_text_to_speech_audio(text_overlay, tone, tts_audio_file)

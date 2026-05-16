@@ -44,19 +44,25 @@ class TextToSpeechGenerator:
         old_stdout, old_stderr = sys.stdout, sys.stderr
         sys.stdout = sys.stderr = open(os.devnull, 'w')
 
-        from qwen_tts import Qwen3TTSModel
-        self.model = Qwen3TTSModel.from_pretrained(
-            'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
-            device_map=self.device,
-            dtype=torch.float16 if self.device != 'cpu' else torch.float32,
-            attn_implementation='sdpa',)
-        
-        os.dup2(old_stdout_fd, 1)
-        os.dup2(old_stderr_fd, 2)
-        os.close(old_stdout_fd)
-        os.close(old_stderr_fd)
-        os.close(devnull_fd)
-        sys.stdout, sys.stderr = old_stdout, old_stderr
+        try:
+            from qwen_tts import Qwen3TTSModel
+            self.model = Qwen3TTSModel.from_pretrained(
+                'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
+                device_map=self.device,
+                dtype=torch.float16 if self.device != 'cpu' else torch.float32,
+                attn_implementation='sdpa',)
+        except Exception as e:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            sys.stdout, sys.stderr = old_stdout, old_stderr
+            self.console.print(f'[bold red](tts) Error loading Qwen3 TTS model:[/bold red] {e}\n')
+        finally:
+            os.dup2(old_stdout_fd, 1)
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stdout_fd)
+            os.close(old_stderr_fd)
+            os.close(devnull_fd)
+            sys.stdout, sys.stderr = old_stdout, old_stderr
         # --------------------------------------------------------------
 
         self.whisper_model = whisper.load_model('base', device=self.device)

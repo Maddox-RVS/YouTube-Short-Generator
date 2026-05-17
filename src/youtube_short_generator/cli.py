@@ -96,6 +96,7 @@ def create(
     except: font_path = Path('Dosis-Bold.ttf')
     
     generator = ShortGenerator(video_file, audio_file, text_overlay_file, output_file)
+    generator.verbose = True
     generator.generate_short(audio_volume=volume, 
                              keep_video_audio=keep_video_audio, 
                              tone=tone, 

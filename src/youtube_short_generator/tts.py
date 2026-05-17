@@ -39,6 +39,7 @@ class TextToSpeechGenerator:
         self.device: str = device
         self.console: Optional[Console] = console or Console()
         self._rich_live: Optional[Live] = rich_live or Live(console=self.console, refresh_per_second=20, transient=True)
+        self.verbose: bool = False
 
         # --------------------------------------------------------------
         # Suppress stdout and stderr from the TTS library during import
@@ -92,15 +93,17 @@ class TextToSpeechGenerator:
             self.console.print(f'[bold red](tts) Error:[/bold red] Output path "{output_file.parent}" is not a directory.\n')
             return
 
-        self._rich_live.start()
-        self._rich_live.update(Spinner('dots12', text=Text('Generating text-to-speech audio...', style='bold blue'), style='bold blue'))
+        if self.verbose:
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Generating text-to-speech audio...', style='bold blue'), style='bold blue'))
         wavs, sr = self.model.generate_voice_design(
             text=text,
             language='English',
             instruct=tone,)
         sf.write(output_file, wavs[0], sr)
-        self._rich_live.stop()
-        self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
+        if self.verbose:
+            self._rich_live.stop()
+            self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
 
     def generate_timestamped_subtitles(self, input_speach_file: Path) -> list[dict]:
         '''
@@ -118,8 +121,9 @@ class TextToSpeechGenerator:
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            self._rich_live.start()
-            self._rich_live.update(Spinner('dots12', text=Text('Generating timestamped subtitles...', style='bold blue'), style='bold blue'))
+            if self.verbose:
+                self._rich_live.start()
+                self._rich_live.update(Spinner('dots12', text=Text('Generating timestamped subtitles...', style='bold blue'), style='bold blue'))
             result: dict = self.whisper_model.transcribe(str(input_speach_file), word_timestamps=True)
             words: list[dict] = []
             for segment in result['segments']:
@@ -128,6 +132,7 @@ class TextToSpeechGenerator:
                         'word': word['word'].strip(),
                         'start': float(word['start']),
                         'end': float(word['end'])})
-            self._rich_live.stop()
-            self.console.print(f'[green]=> Timestamped subtitles generated successfully![/green]')
+            if self.verbose:
+                self._rich_live.stop()
+                self.console.print(f'[green]=> Timestamped subtitles generated successfully![/green]')
             return words

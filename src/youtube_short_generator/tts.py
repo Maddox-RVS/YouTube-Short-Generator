@@ -6,6 +6,10 @@ and generating timestamped subtitles using OpenAI Whisper.
 '''
 
 from rich.console import Console
+from rich.spinner import Spinner
+from typing import Optional
+from rich.live import Live
+from rich.text import Text
 from pathlib import Path
 import soundfile as sf
 import warnings
@@ -20,22 +24,21 @@ class TextToSpeechGenerator:
     with word-level timestamps. Supports GPU acceleration via CUDA.
     '''
     
-    def __init__(self, device: str, console: Console = None):
+    def __init__(self, device: str, console: Optional[Console] = None, rich_live: Optional[Live] = None):
         '''
         Initialize the TextToSpeechGenerator with specified device.
         
         Args:
             device: Device to use ('cuda', 'mps', or 'cpu')
             console: Optional Rich Console instance for logging. If None, a new Console will be created.
+            rich_live: Optional Rich Live instance for displaying spinners. If None, a new Live will be created.
         '''
         import whisper
         import torch
 
         self.device: str = device
-
-        self.console: Console = console
-        if self.console is None:
-            self.console = Console()
+        self.console: Optional[Console] = console or Console()
+        self._rich_live: Optional[Live] = rich_live or Live(console=self.console, refresh_per_second=20, transient=True)
 
         # --------------------------------------------------------------
         # Suppress stdout and stderr from the TTS library during import
@@ -89,12 +92,14 @@ class TextToSpeechGenerator:
             self.console.print(f'[bold red](tts) Error:[/bold red] Output path "{output_file.parent}" is not a directory.\n')
             return
 
-        with self.console.status('[bold blue]Generating text-to-speach audio...', spinner='dots12', spinner_style='bold blue'):
-            wavs, sr = self.model.generate_voice_design(
-                text=text,
-                language='English',
-                instruct=tone,)
-            sf.write(output_file, wavs[0], sr)
+        self._rich_live.start()
+        self._rich_live.update(Spinner('dots12', text=Text('Generating text-to-speech audio...', style='bold blue'), style='bold blue'))
+        wavs, sr = self.model.generate_voice_design(
+            text=text,
+            language='English',
+            instruct=tone,)
+        sf.write(output_file, wavs[0], sr)
+        self._rich_live.stop()
         self.console.print(f'[green]=> Text-to-speech audio generated successfully and saved to:[/green] [default dim]"{output_file}"[/default dim]')
 
     def generate_timestamped_subtitles(self, input_speach_file: Path) -> list[dict]:
@@ -113,14 +118,16 @@ class TextToSpeechGenerator:
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            with self.console.status('[bold blue]Generating timestamped subtitles...', spinner='dots12', spinner_style='bold blue'):
-                result: dict = self.whisper_model.transcribe(str(input_speach_file), word_timestamps=True)
-                words: list[dict] = []
-                for segment in result['segments']:
-                    for word in segment['words']:
-                        words.append({
-                            'word': word['word'].strip(),
-                            'start': float(word['start']),
-                            'end': float(word['end'])})
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Generating timestamped subtitles...', style='bold blue'), style='bold blue'))
+            result: dict = self.whisper_model.transcribe(str(input_speach_file), word_timestamps=True)
+            words: list[dict] = []
+            for segment in result['segments']:
+                for word in segment['words']:
+                    words.append({
+                        'word': word['word'].strip(),
+                        'start': float(word['start']),
+                        'end': float(word['end'])})
+            self._rich_live.stop()
             self.console.print(f'[green]=> Timestamped subtitles generated successfully![/green]')
             return words

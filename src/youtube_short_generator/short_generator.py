@@ -7,6 +7,7 @@ It includes GPU acceleration support for video encoding when CUDA is available.
 '''
 
 from .tts import TextToSpeechGenerator
+from rich.spinner import Spinner
 from rich.console import Console
 from typing import Optional
 from rich.live import Live
@@ -30,18 +31,20 @@ class ShortGenerator:
                  text_overlay_file: Path, 
                  output_file: Path,
                  tts_generator: Optional[TextToSpeechGenerator] = None,
-                 console: Console = None):
+                 console: Console = None,
+                 rich_live: Optional[Live] = None):
         '''
         Initialize the ShortGenerator with input and output paths.
         
         Args:
             video_file: Path to the source video file
             audio_file: Path to the background music/audio file
-            taxt_overlay_file: Path to the text file containing narration script
+            text_overlay_file: Path to the text file containing narration script
             output_file: Path where the generated short video will be saved
             tts_generator: Optional pre-initialized TextToSpeechGenerator instance.
                           If None, a new instance will be created during generate_short()
             console: Optional Rich Console instance for logging. If None, a new Console will be created.
+            rich_live: Optional Rich Live instance for dynamic updates. If None, a new Live instance will be created.
         '''
 
         self._tempdir: tempfile.TemporaryDirectory = tempfile.TemporaryDirectory()
@@ -50,9 +53,8 @@ class ShortGenerator:
         self.text_overlay_file: Path = text_overlay_file
         self.output_file: Path = output_file
         self.tts_generator: Optional[TextToSpeechGenerator] = tts_generator
-        self._console = console
-        if self._console is None:
-            self._console = Console()
+        self._console: Optional[Console] = console or Console()
+        self._rich_live: Optional[Live] = rich_live or Live(console=self._console, refresh_per_second=20, transient=True)
         self.video_codec: str = 'libx264'
 
     def _get_video_codec(self) -> str:
@@ -65,17 +67,19 @@ class ShortGenerator:
         Returns:
             String name of the video codec to use ('h264_nvenc' or 'libx264')
         '''
-        import torch
 
         video_encoding_method: str = 'libx264'
         video_encoding_message: str = ''
-        with self._console.status('[bold blue]Detecting available video encoding method...', spinner='dots12', spinner_style='bold blue'):
-            if torch.cuda.is_available():
-                video_encoding_message = '[green]=> Using GPU hardware encoding (h264_nvenc)[/green]'
-                video_encoding_method = 'h264_nvenc'
-            else:
-                video_encoding_message = '[green]=> Using CPU software encoding (libx264)[/green]'
-                video_encoding_method = 'libx264'
+        self._rich_live.start()
+        self._rich_live.update(Spinner('dots12', text=Text('Detecting available video encoding method...', style='bold blue'), style='bold blue'))
+        import torch
+        if torch.cuda.is_available():
+            video_encoding_message = '[green]=> Using GPU hardware encoding (h264_nvenc)[/green]'
+            video_encoding_method = 'h264_nvenc'
+        else:
+            video_encoding_message = '[green]=> Using CPU software encoding (libx264)[/green]'
+            video_encoding_method = 'libx264'
+        self._rich_live.stop()
         self._console.print(f'{video_encoding_message}')
         return video_encoding_method
 
@@ -142,14 +146,11 @@ class ShortGenerator:
         with Live(console=self._console, refresh_per_second=20, transient=True) as live:
             for i in range(len(lines)):
                 window = lines[max(0, i - lines_shown):i + 1]
-
                 display = Text()
                 display.append('Opening and reading overlay text file:\n', style='blue bold')
                 display.append(''.join(window), style='dim')
-
                 live.update(display)
                 time.sleep(delay)
-
         self._console.print('[green]=> Overlay text file read successfully![/green]')
         return ''.join(lines)
 
@@ -197,28 +198,32 @@ class ShortGenerator:
             with AudioFileClip(str(input_tts_audio_file)) as tts_clip:
                 tts_audio_duration = tts_clip.duration
                 if final_clip.duration < tts_audio_duration:
-                    with self._console.status('[bold blue]Fitting video to {tts_audio_duration} seconds...', spinner='dots12', spinner_style='bold blue'):
-                        final_clip = final_clip.with_effects([vfx.Loop(duration=tts_audio_duration)])
+                    self._rich_live.start()
+                    self._rich_live.update(Spinner('dots12', text=Text(f'Fitting video to {tts_audio_duration:.2f} seconds...', style='bold blue'), style='bold blue'))
+                    final_clip = final_clip.with_effects([vfx.Loop(duration=tts_audio_duration)])
+                    self._rich_live.stop()
                     self._console.print(f'[green]=> Video duration increased to match TTS audio duration of {tts_audio_duration:.2f} seconds![/green]')
             # ----------------------------------------------------------------------------------------------
 
             # ------------------------------------
             # Crop the video to 9:16 aspect ratio
             # ------------------------------------
-            with self._console.status('[bold blue]Cropping video to 9:16 aspect ratio...', spinner='dots12', spinner_style='bold blue'):
-                w, h = final_clip.size
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Cropping video to 9:16 aspect ratio...', style='bold blue'), style='bold blue'))
+            w, h = final_clip.size
 
-                target_width = int(h * 9 / 16)
-                if target_width % 2 != 0:
-                    target_width -= 1
+            target_width = int(h * 9 / 16)
+            if target_width % 2 != 0:
+                target_width -= 1
 
-                if h % 2 != 0:
-                    h -= 1
+            if h % 2 != 0:
+                h -= 1
 
-                x1 = (w - target_width) / 2
-                x2 = x1 + target_width
+            x1 = (w - target_width) / 2
+            x2 = x1 + target_width
 
-                final_clip = final_clip.cropped(x1=x1, y1=0, x2=x2, y2=h)
+            final_clip = final_clip.cropped(x1=x1, y1=0, x2=x2, y2=h)
+            self._rich_live.stop()
             self._console.print('[green]=> Finished cropping video to 9:16 aspect ratio![/green]')
             # ------------------------------------
 
@@ -226,89 +231,99 @@ class ShortGenerator:
             # Remove original audio from input video if keep_video_audio is False
             # --------------------------------------------------------------------
             if not keep_video_audio:
-                with self._console.status('[bold blue]Removing original audio from video...', spinner='dots12', spinner_style='bold blue'):
-                    final_clip = final_clip.without_audio()
+                self._rich_live.start()
+                self._rich_live.update(Spinner('dots12', text=Text('Removing original audio from video...', style='bold blue'), style='bold blue'))
+                final_clip = final_clip.without_audio()
+                self._rich_live.stop()
                 self._console.print('[green]=> Original audio removed from video![/green]')
             # --------------------------------------------------------------------
 
             # ----------------------------------------------------------------------------------------------
             # Mix the TTS audio with the background music, applying the specified volume level to the music
             # ----------------------------------------------------------------------------------------------
-            with self._console.status('[bold blue]Mixing TTS audio with background audio...', spinner='dots12', spinner_style='bold blue'):
-                audio: AudioFileClip = AudioFileClip(str(input_audio_file)).with_volume_scaled(audio_volume)
-                tts_audio: AudioFileClip = AudioFileClip(str(input_tts_audio_file))
-                mixed_audio = CompositeAudioClip([audio, tts_audio]) if not keep_video_audio else CompositeAudioClip([audio, tts_audio, final_clip.audio])
-                final_clip = final_clip.with_audio(mixed_audio)
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Mixing TTS audio with background audio...', style='bold blue'), style='bold blue'))
+            audio: AudioFileClip = AudioFileClip(str(input_audio_file)).with_volume_scaled(audio_volume)
+            tts_audio: AudioFileClip = AudioFileClip(str(input_tts_audio_file))
+            mixed_audio = CompositeAudioClip([audio, tts_audio]) if not keep_video_audio else CompositeAudioClip([audio, tts_audio, final_clip.audio])
+            final_clip = final_clip.with_audio(mixed_audio)
+            self._rich_live.stop()
             self._console.print('[green]=> Finished mixing TTS audio with background audio![/green]')
             # ----------------------------------------------------------------------------------------------
 
             # -----------------------------
             # Apply subtitles to the video
             # -----------------------------
-            with self._console.status('[bold blue]Applying subtitles to video...', spinner='dots12', spinner_style='bold blue'):
-                final_clip: VideoClip = final_clip
-                vw, vh = final_clip.size
-                bounce_duration: float = 0.12
-                
-                def _make_word_clip(word: str, start: float, end: float, stroke_color: str, stroke_width: int = 6) -> TextClip:
-                    def _get_fitting_font_size(text: str, max_width: int, max_font_size: int = 140) -> int:
-                        for size in range(max_font_size, 10, -1):
-                            font = ImageFont.truetype(str(font_path), size)
-                            bbox = font.getbbox(text)
-                            text_width = bbox[2] - bbox[0] + stroke_width * 2
-                            if text_width <= max_width:
-                                return size
-                        return 10  # fallback minimum
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Applying subtitles to video...', style='bold blue'), style='bold blue'))
+            final_clip: VideoClip = final_clip
+            vw, vh = final_clip.size
+            bounce_duration: float = 0.12
+            
+            def _make_word_clip(word: str, start: float, end: float, stroke_color: str, stroke_width: int = 6) -> TextClip:
+                def _get_fitting_font_size(text: str, max_width: int, max_font_size: int = 140) -> int:
+                    for size in range(max_font_size, 10, -1):
+                        font = ImageFont.truetype(str(font_path), size)
+                        bbox = font.getbbox(text)
+                        text_width = bbox[2] - bbox[0] + stroke_width * 2
+                        if text_width <= max_width:
+                            return size
+                    return 10  # fallback minimum
 
-                    font_size: int = _get_fitting_font_size(word, vw - 40)  # 40px padding either side
+                font_size: int = _get_fitting_font_size(word, vw - 40)  # 40px padding either side
 
-                    def _get_scale(t: float) -> float:
-                        if t > bounce_duration: return 1.0
-                        progress = t / bounce_duration
-                        base = 0.5 + (0.65 * progress)
-                        result = base if progress < 0.75 else (1.15 - 0.15 * ((progress - 0.75) / 0.25))
-                        return max(result, 0.5)
-                    
-                    text_clip: TextClip = TextClip(
-                        font=str(font_path),
-                        text=word,
-                        method='caption',
-                        size=(vw, vh),
-                        font_size=font_size,
-                        color='white',
-                        stroke_color=stroke_color,
-                        stroke_width=stroke_width,
-                        text_align='center')
-                    text_clip = text_clip.with_position('center')
-                    text_clip = text_clip.with_start(start)
-                    text_clip = text_clip.with_duration(end - start)
+                def _get_scale(t: float) -> float:
+                    if t > bounce_duration: return 1.0
+                    progress = t / bounce_duration
+                    base = 0.5 + (0.65 * progress)
+                    result = base if progress < 0.75 else (1.15 - 0.15 * ((progress - 0.75) / 0.25))
+                    return max(result, 0.5)
+                
+                text_clip: TextClip = TextClip(
+                    font=str(font_path),
+                    text=word,
+                    method='caption',
+                    size=(vw, vh),
+                    font_size=font_size,
+                    color='white',
+                    stroke_color=stroke_color,
+                    stroke_width=stroke_width,
+                    text_align='center')
+                text_clip = text_clip.with_position('center')
+                text_clip = text_clip.with_start(start)
+                text_clip = text_clip.with_duration(end - start)
 
-                    animated_clip = text_clip.resized(lambda t: _get_scale(t))
-                    return animated_clip
-                
-                def _make_subtitle(word: dict) -> VideoClip:
-                    return _make_word_clip(
-                        word=word['word'],
-                        start=word['start'],
-                        end=word['end'],
-                        stroke_color=subtitle_color,
-                        stroke_width=6)
-                
-                subtitle_clips: list[VideoClip] = [_make_subtitle(w) for w in subtitles]
-                final_clip = CompositeVideoClip([final_clip] + subtitle_clips)
+                animated_clip = text_clip.resized(lambda t: _get_scale(t))
+                return animated_clip
+            
+            def _make_subtitle(word: dict) -> VideoClip:
+                return _make_word_clip(
+                    word=word['word'],
+                    start=word['start'],
+                    end=word['end'],
+                    stroke_color=subtitle_color,
+                    stroke_width=6)
+            
+            subtitle_clips: list[VideoClip] = [_make_subtitle(w) for w in subtitles]
+            final_clip = CompositeVideoClip([final_clip] + subtitle_clips)
+            self._rich_live.stop()
             self._console.print('[green]=> Finished applying subtitles to video![/green]')
             # -----------------------------
 
             # ----------------------------------------------------------------------------------------------------------------
             # Cut the duration of the video to match the TTS audio duration (in case video is longer than TTS audio duration)
             # ----------------------------------------------------------------------------------------------------------------
-            with self._console.status('[bold blue]Cutting video to {tts_audio_duration} seconds...', spinner='dots12', spinner_style='bold blue'):
-                final_clip = final_clip.subclipped(0, tts_audio_duration)
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text(f'Cutting video to match TTS audio duration of {tts_audio_duration:.2f} seconds...', style='bold blue'), style='bold blue'))
+            final_clip = final_clip.subclipped(0, tts_audio_duration)
+            self._rich_live.stop()
             self._console.print(f'[green]=> Video duration cut to match TTS audio duration of {tts_audio_duration:.2f} seconds![/green]')
             # ----------------------------------------------------------------------------------------------------------------
 
-            with self._console.status('[bold blue]Exporting video...', spinner='dots12', spinner_style='bold blue'):
-                final_clip.write_videofile(str(output_file), codec=self.video_codec, audio_codec='aac', logger=None)
+            self._rich_live.start()
+            self._rich_live.update(Spinner('dots12', text=Text('Exporting video...', style='bold blue'), style='bold blue'))
+            final_clip.write_videofile(str(output_file), codec=self.video_codec, audio_codec='aac', logger=None)
+            self._rich_live.stop()
             self._console.print(f'[green]=> Video exported successfully![/green]')
             audio.close()
             tts_audio.close()
@@ -325,22 +340,24 @@ class ShortGenerator:
         Returns:
             String identifier of the device ('cuda', 'mps', or 'cpu')
         '''
-        import torch
 
         device: str = 'cpu'
         device_selection_message: str = ''
-        with self._console.status('[bold blue]Detecting available device...', spinner='dots12', spinner_style='bold blue'):
-            if torch.cuda.is_available():
-                device_count = torch.cuda.device_count()
-                device_name = torch.cuda.get_device_name(0)
-                device_selection_message = f'[green]=> CUDA GPU detected:[/green] [default dim]{device_name} ({device_count} GPU{"s" if device_count > 1 else ""})[/default dim]'
-                device = 'cuda'
-            elif torch.backends.mps.is_available():
-                device_selection_message = '[green]=> Apple Silicon (MPS) detected[/green]'
-                device = 'mps'
-            else:
-                device_selection_message = '[green]=> No GPU detected, using CPU[/green]'
-                device = 'cpu'
+        self._rich_live.start()
+        self._rich_live.update(Spinner('dots12', text=Text('Detecting available device...', style='bold blue'), style='bold blue'))
+        import torch
+        if torch.cuda.is_available():
+            device_count = torch.cuda.device_count()
+            device_name = torch.cuda.get_device_name(0)
+            device_selection_message = f'[green]=> CUDA GPU detected:[/green] [default dim]{device_name} ({device_count} GPU{"s" if device_count > 1 else ""})[/default dim]'
+            device = 'cuda'
+        elif torch.backends.mps.is_available():
+            device_selection_message = '[green]=> Apple Silicon (MPS) detected[/green]'
+            device = 'mps'
+        else:
+            device_selection_message = '[green]=> No GPU detected, using CPU[/green]'
+            device = 'cpu'
+        self._rich_live.stop()
         self._console.print(f'{device_selection_message}')
         return device
 
@@ -379,13 +396,17 @@ class ShortGenerator:
         self.video_codec = self._get_video_codec()
 
         # Convert/encode input video as mp4
-        with self._console.status('[bold blue]Ensuring video is proper format...', spinner='dots12', spinner_style='bold blue'):
-            self.video_file = self._convert_to_mp4(self.video_file)
+        self._rich_live.start()
+        self._rich_live.update(Spinner('dots12', text=Text('Ensuring video is proper format...', style='bold blue'), style='bold blue'))
+        self.video_file = self._convert_to_mp4(self.video_file)
+        self._rich_live.stop()
         self._console.print('[green]=> Validated video format![/green]')
 
         # Convert/encode input audio as mp3
-        with self._console.status('[bold blue]Ensuring audio is proper format...', spinner='dots12', spinner_style='bold blue'):
-            self.audio_file = self._convert_to_mp3(self.audio_file)
+        self._rich_live.start()
+        self._rich_live.update(Spinner('dots12', text=Text('Ensuring audio is proper format...', style='bold blue'), style='bold blue'))
+        self.audio_file = self._convert_to_mp3(self.audio_file)
+        self._rich_live.stop()
         self._console.print('[green]=> Validated audio format![/green]')
 
         # Read text from text overlay file
@@ -394,7 +415,7 @@ class ShortGenerator:
         # Generate TTS audio based on the text overlay and specified tone, then save to temporary directory
         device: str = self._get_device()
         self._console.print(f'[bold blue]Initializing Text-to-Speech generator...', end='\r')
-        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device, self._console)
+        if not self.tts_generator: self.tts_generator = TextToSpeechGenerator(device, self._console, self._rich_live)
         self._console.print(f'[green]=> Text-to-Speech generator initialized with tone:[/green] [default dim]"{tone}"[/default dim]')
         tts_audio_file: Path = Path(self._tempdir.name) / 'tts_audio.wav'
         self.tts_generator.generate_text_to_speech_audio(text_overlay, tone, tts_audio_file)

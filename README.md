@@ -119,6 +119,8 @@ youtube-short-generator download \
 
 Use the package as a Python library in your own projects:
 
+#### Basic Usage
+
 ```python
 from youtube_short_generator import ShortGenerator, download_youtube_video
 from pathlib import Path
@@ -146,6 +148,46 @@ download_youtube_video(
     audio_only=False  # Set to True for audio-only download
 )
 ```
+
+#### Status Reporting (Callbacks)
+
+`ShortGenerator` reports status updates through a callback that receives:
+
+- **`renderable`**: A Rich renderable (often a `Spinner` or styled `Text`)
+- **`permanent`**: `True` if the status message should be kept, `False` if it's a live/progress update
+
+You can use this to drive your own UI or logging. Here's a minimal template:
+
+```python
+from youtube_short_generator import ShortGenerator
+from rich.console import Console
+from rich.live import Live
+from pathlib import Path
+
+console = Console()
+live = Live(console=console, refresh_per_second=10)  # Shared live region for dynamic status
+
+def on_status_change(renderable, permanent: bool):
+  if permanent:
+    console.print(renderable)        # Final messages stay in the log
+  else:
+    live.update(renderable, refresh=True)  # Live updates replace the spinner line
+
+# Create a short from existing files
+generator = ShortGenerator(
+  video_file=Path('input_video.mp4'),
+  audio_file=Path('background_music.mp3'), 
+  text_overlay_file=Path('narration.txt'),
+  output_file=Path('my_short.mp4')
+)
+
+generator.on_status_change = on_status_change  # Hook status updates
+
+with live:
+  generator.generate_short(tone='excited')  # Run with live status updates
+```
+
+`TextToSpeechGenerator` also exposes `on_status_change`; `ShortGenerator` forwards it to keep a single callback.
 
 ## Advanced Configuration
 
@@ -224,6 +266,11 @@ ShortGenerator(
 
 **Methods:**
 - `generate_short(audio_volume=1.0, keep_video_audio=False, tone='Regular Guy', font_path=Path('Dosis-Bold.ttf'), subtitle_color='#FF0000')` - Main processing pipeline
+
+**Status:**
+- `status` property returns a `(renderable, permanent)` tuple.
+- `on_status_change` is a callback invoked on every status update.
+- `is_running` indicates whether generation is in progress.
 
 ### TextToSpeechGenerator
 

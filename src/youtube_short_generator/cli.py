@@ -6,10 +6,14 @@ from YouTube with AI-generated voiceover and subtitles.
 '''
 
 from .youtube_downloader import download_youtube_video
+from rich.console import Console
+from rich.live import Live
 from pathlib import Path
 import typer
 import rich
 import re
+
+console = Console()
 
 app = typer.Typer(
     help="YouTube Short Toolbox - Generate YouTube Shorts with AI",
@@ -70,23 +74,23 @@ def create(
     output_file: Path = Path(output)
 
     if not all([video_file.exists(), audio_file.exists()]):
-        rich.print('[bold red]Error:[/bold red] Video or audio file does not exist.\n')
+        console.print('[bold red]Error:[/bold red] Video or audio file does not exist.\n')
         raise typer.Exit()
     
     if not all([video_file.is_file(), audio_file.is_file(), text_overlay_file.is_file()]):
-        rich.print('[bold red]Error:[/bold red] Video or audio path is not a file.\n')
+        console.print('[bold red]Error:[/bold red] Video or audio path is not a file.\n')
         raise typer.Exit()
     
     if not validate_video_format(video_file):
-        rich.print('[bold red]Error:[/bold red] Invalid video format. Supported formats are .mp4, .mov, .avi, .mkv.\n')
+        console.print('[bold red]Error:[/bold red] Invalid video format. Supported formats are .mp4, .mov, .avi, .mkv.\n')
         raise typer.Exit()
     
     if not validate_music_format(audio_file):
-        rich.print('[bold red]Error:[/bold red] Invalid audio format. Supported formats are .mp3, .wav, .aac, .flac.\n')
+        console.print('[bold red]Error:[/bold red] Invalid audio format. Supported formats are .mp3, .wav, .aac, .flac.\n')
         raise typer.Exit()
     
     if not is_valid_hex_color(subtitle_color):
-        rich.print('[bold red]Error:[/bold red] Invalid subtitle color. Please provide a valid hex color code (e.g., #FF0000).\n')
+        console.print('[bold red]Error:[/bold red] Invalid subtitle color. Please provide a valid hex color code (e.g., #FF0000).\n')
         raise typer.Exit()
     
     import importlib.resources
@@ -94,14 +98,29 @@ def create(
         font_dir: Path = importlib.resources.files('youtube_short_generator').parent / 'youtube_short_generator'
         font_path: Path = font_dir / 'Dosis-Bold.ttf'
     except: font_path = Path('Dosis-Bold.ttf')
-    
+
+    console.print('[bold green]------------------------[/bold green]')
+    console.print('[bold green]YouTube Short Generator[/bold green]')
+    console.print('[bold green]------------------------[/bold green]')
+    console.print('[bold green]Processing video...[/bold green]')
+
     generator = ShortGenerator(video_file, audio_file, text_overlay_file, output_file)
-    generator.verbose = True
-    generator.generate_short(audio_volume=volume, 
-                             keep_video_audio=keep_video_audio, 
-                             tone=tone, 
-                             font_path=font_path,
-                             subtitle_color=subtitle_color)
+    
+    with Live(console=console, refresh_per_second=20, transient=True) as live:
+        def on_status_change(renderable, permanent):
+            if permanent: live.console.print(renderable)
+            else: live.update(renderable)
+
+        generator.on_status_change = on_status_change
+
+        generator.generate_short(audio_volume=volume, 
+                                keep_video_audio=keep_video_audio, 
+                                tone=tone, 
+                                font_path=font_path,
+                                subtitle_color=subtitle_color)
+
+    console.print(f'[bold green]Finished processing video. Output saved to:[/bold green] [default dim]"{output_file}"[/default dim]')
+    console.print('[bold green]------------------------[/bold green]')
 
 @app.command(short_help='Download a YouTube video/audio from a URL')
 def download(
@@ -120,11 +139,11 @@ def download(
     output_dir: Path = Path(output)
 
     if not output_dir.exists():
-        rich.print(f'[bold red]Error:[/bold red] Output directory "{output_dir}" does not exist.\n')
+        console.print(f'[bold red]Error:[/bold red] Output directory "{output_dir}" does not exist.\n')
         raise typer.Exit()
     
     if not output_dir.is_dir():
-        rich.print(f'[bold red]Error:[/bold red] Output path "{output_dir}" is not a directory.\n')
+        console.print(f'[bold red]Error:[/bold red] Output path "{output_dir}" is not a directory.\n')
         raise typer.Exit()
     
     download_youtube_video(link, output_dir, audio_only=audio_only)
